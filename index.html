@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Colour Wars (with Bot)</title>
+  <title>Colour Wars - Menu</title>
   <style>
     body {
       background: #111;
@@ -17,8 +17,27 @@
       margin-bottom: 10px;
     }
 
+    #menu {
+      margin-top: 50px;
+    }
+
+    .menu-button {
+      padding: 15px 30px;
+      margin: 10px;
+      font-size: 18px;
+      background: #444;
+      color: white;
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
+    }
+
+    .menu-button:hover {
+      background: #666;
+    }
+
     #board {
-      display: grid;
+      display: none;
       grid-template-columns: repeat(6, 60px);
       grid-template-rows: repeat(6, 60px);
       gap: 4px;
@@ -64,23 +83,38 @@
   </style>
 </head>
 <body>
-  <h1>Colour Wars (You vs Bot)</h1>
+  <h1>Colour Wars</h1>
+
+  <div id="menu">
+    <button class="menu-button" onclick="startGame(false)">2 Player</button>
+    <button class="menu-button" onclick="startGame(true)">Solo vs Bot</button>
+  </div>
+
   <div id="board"></div>
-  <div id="status">Player <span id="playerName">Red</span>'s turn</div>
+  <div id="status"></div>
 
   <script>
     const boardSize = 6;
     const board = [];
     const boardElement = document.getElementById("board");
-    const playerName = document.getElementById("playerName");
     const statusText = document.getElementById("status");
+    const menu = document.getElementById("menu");
 
     let currentPlayer = "red";
     let gameOver = false;
     let redPlayed = false;
     let bluePlayed = false;
     let chainInProgress = false;
+    let singlePlayer = false;
     const queue = [];
+
+    function startGame(vsBot) {
+      singlePlayer = vsBot;
+      menu.style.display = "none";
+      boardElement.style.display = "grid";
+      statusText.textContent = "Player Red's turn";
+      createBoard();
+    }
 
     function createBoard() {
       boardElement.innerHTML = "";
@@ -92,7 +126,9 @@
           cell.dataset.x = x;
           cell.dataset.y = y;
           cell.onclick = () => {
-            if (currentPlayer === "red") clickCell(x, y);
+            if (gameOver || chainInProgress) return;
+            if (singlePlayer && currentPlayer !== "red") return;
+            clickCell(x, y);
           };
           board[y][x] = { count: 0, owner: null, el: cell };
           boardElement.appendChild(cell);
@@ -101,8 +137,6 @@
     }
 
     function clickCell(x, y) {
-      if (gameOver || chainInProgress) return;
-
       const cell = board[y][x];
       if (cell.owner && cell.owner !== currentPlayer) return;
 
@@ -114,7 +148,7 @@
         if (redPlayed && bluePlayed) checkWinCondition();
         if (!gameOver) {
           switchPlayer();
-          if (currentPlayer === "blue") {
+          if (singlePlayer && currentPlayer === "blue") {
             setTimeout(botMove, 400);
           }
         }
@@ -123,7 +157,7 @@
 
     function switchPlayer() {
       currentPlayer = currentPlayer === "red" ? "blue" : "red";
-      playerName.textContent = currentPlayer.charAt(0).toUpperCase() + currentPlayer.slice(1);
+      statusText.textContent = "Player " + (currentPlayer.charAt(0).toUpperCase() + currentPlayer.slice(1)) + "'s turn";
     }
 
     function botMove() {
@@ -220,8 +254,6 @@
         }
       }
     }
-
-    createBoard();
   </script>
 </body>
 </html>
