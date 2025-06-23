@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Colour Wars (with Bot)</title>
+  <style>
+    body {
+      background: #111;
+      color: white;
+      font-family: sans-serif;
+      text-align: center;
+      margin: 0;
+      padding: 20px;
+    }
+
+    h1 {
+      margin-bottom: 10px;
+    }
+
+    #board {
+      display: grid;
+      grid-template-columns: repeat(6, 60px);
+      grid-template-rows: repeat(6, 60px);
+      gap: 4px;
+      justify-content: center;
+      margin: 20px auto;
+    }
+
+    .cell {
+      width: 60px;
+      height: 60px;
+      background: #222;
+      border-radius: 10px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      position: relative;
+      cursor: pointer;
+    }
+
+    .dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      margin: 1px;
+    }
+
+    .red .dot { background: #e74c3c; }
+    .blue .dot { background: #3498db; }
+
+    .owner-red { box-shadow: 0 0 5px 2px #e74c3c inset; }
+    .owner-blue { box-shadow: 0 0 5px 2px #3498db inset; }
+
+    #status {
+      font-size: 18px;
+      margin-top: 10px;
+    }
+
+    #status.win {
+      color: #f1c40f;
+      font-weight: bold;
+      font-size: 22px;
+    }
+  </style>
+</head>
+<body>
+  <h1>Colour Wars (You vs Bot)</h1>
+  <div id="board"></div>
+  <div id="status">Player <span id="playerName">Red</span>'s turn</div>
+
+  <script>
+    const boardSize = 6;
+    const board = [];
+    const boardElement = document.getElementById("board");
+    const playerName = document.getElementById("playerName");
+    const statusText = document.getElementById("status");
+
+    let currentPlayer = "red";
+    let gameOver = false;
+    let redPlayed = false;
+    let bluePlayed = false;
+    let chainInProgress = false;
+    const queue = [];
+
+    function createBoard() {
+      boardElement.innerHTML = "";
+      for (let y = 0; y < boardSize; y++) {
+        board[y] = [];
+        for (let x = 0; x < boardSize; x++) {
+          const cell = document.createElement("div");
+          cell.classList.add("cell");
+          cell.dataset.x = x;
+          cell.dataset.y = y;
+          cell.onclick = () => {
+            if (currentPlayer === "red") clickCell(x, y);
+          };
+          board[y][x] = { count: 0, owner: null, el: cell };
+          boardElement.appendChild(cell);
+        }
+      }
+    }
+
+    function clickCell(x, y) {
+      if (gameOver || chainInProgress) return;
+
+      const cell = board[y][x];
+      if (cell.owner && cell.owner !== currentPlayer) return;
+
+      if (currentPlayer === "red") redPlayed = true;
+      if (currentPlayer === "blue") bluePlayed = true;
+
+      queue.push({ x, y, player: currentPlayer });
+      processQueue(() => {
+        if (redPlayed && bluePlayed) checkWinCondition();
+        if (!gameOver) {
+          switchPlayer();
+          if (currentPlayer === "blue") {
+            setTimeout(botMove, 400);
+          }
+        }
+      });
+    }
+
+    function switchPlayer() {
+      currentPlayer = currentPlayer === "red" ? "blue" : "red";
+      playerName.textContent = currentPlayer.charAt(0).toUpperCase() + currentPlayer.slice(1);
+    }
+
+    function botMove() {
+      if (gameOver) return;
+      const choices = [];
+
+      for (let y = 0; y < boardSize; y++) {
+        for (let x = 0; x < boardSize; x++) {
+          const cell = board[y][x];
+          if (!cell.owner || cell.owner === "blue") {
+            choices.push({ x, y });
+          }
+        }
+      }
+
+      if (choices.length === 0) return;
+      const move = choices[Math.floor(Math.random() * choices.length)];
+      clickCell(move.x, move.y);
+    }
+
+    function processQueue(callback) {
+      chainInProgress = true;
+      if (queue.length === 0) {
+        chainInProgress = false;
+        callback();
+        return;
+      }
+
+      const { x, y, player } = queue.shift();
+      const cell = board[y][x];
+      cell.count++;
+      cell.owner = player;
+      updateCellVisual(x, y);
+
+      if (cell.count >= 4) {
+        cell.count = 0;
+        cell.owner = null;
+        updateCellVisual(x, y);
+
+        const directions = [
+          [0, -1], [0, 1], [-1, 0], [1, 0]
+        ];
+        for (let [dx, dy] of directions) {
+          const nx = x + dx;
+          const ny = y + dy;
+          if (nx >= 0 && nx < boardSize && ny >= 0 && ny < boardSize) {
+            queue.push({ x: nx, y: ny, player });
+          }
+        }
+      }
+
+      setTimeout(() => processQueue(callback), 100);
+    }
+
+    function checkWinCondition() {
+      const redCells = countCellsOwnedBy("red");
+      const blueCells = countCellsOwnedBy("blue");
+
+      if (redCells === 0 && blueCells > 0) {
+        endGame("Blue");
+      } else if (blueCells === 0 && redCells > 0) {
+        endGame("Red");
+      }
+    }
+
+    function countCellsOwnedBy(player) {
+      let count = 0;
+      for (let row of board) {
+        for (let cell of row) {
+          if (cell.owner === player) count++;
+        }
+      }
+      return count;
+    }
+
+    function endGame(winner) {
+      gameOver = true;
+      statusText.textContent = winner + " wins!";
+      statusText.classList.add("win");
+    }
+
+    function updateCellVisual(x, y) {
+      const cell = board[y][x];
+      const el = cell.el;
+      el.innerHTML = "";
+      el.classList.remove("owner-red", "owner-blue", "red", "blue");
+
+      if (cell.owner) {
+        el.classList.add(`owner-${cell.owner}`, cell.owner);
+        for (let i = 0; i < cell.count; i++) {
+          const dot = document.createElement("div");
+          dot.classList.add("dot");
+          el.appendChild(dot);
+        }
+      }
+    }
+
+    createBoard();
+  </script>
+</body>
+</html>
