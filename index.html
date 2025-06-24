@@ -17,11 +17,11 @@
       margin-bottom: 10px;
     }
 
-    #menu {
-      margin-top: 50px;
+    #menu, #gameArea {
+      margin-top: 30px;
     }
 
-    .menu-button {
+    .menu-button, #restartButton {
       padding: 15px 30px;
       margin: 10px;
       font-size: 18px;
@@ -32,12 +32,12 @@
       cursor: pointer;
     }
 
-    .menu-button:hover {
+    .menu-button:hover, #restartButton:hover {
       background: #666;
     }
 
     #board {
-      display: none;
+      display: grid;
       grid-template-columns: repeat(6, 60px);
       grid-template-rows: repeat(6, 60px);
       gap: 4px;
@@ -85,13 +85,18 @@
 <body>
   <h1>Colour Wars</h1>
 
+  <!-- Menu -->
   <div id="menu">
     <button class="menu-button" onclick="startGame(false)">2 Player</button>
     <button class="menu-button" onclick="startGame(true)">Solo vs Bot</button>
   </div>
 
-  <div id="board"></div>
-  <div id="status"></div>
+  <!-- Game Area -->
+  <div id="gameArea" style="display: none;">
+    <div id="board"></div>
+    <div id="status"></div>
+    <button id="restartButton" onclick="goToMenu()">Restart</button>
+  </div>
 
   <script>
     const boardSize = 6;
@@ -99,6 +104,8 @@
     const boardElement = document.getElementById("board");
     const statusText = document.getElementById("status");
     const menu = document.getElementById("menu");
+    const gameArea = document.getElementById("gameArea");
+    const restartButton = document.getElementById("restartButton");
 
     let currentPlayer = "red";
     let gameOver = false;
@@ -111,9 +118,19 @@
     function startGame(vsBot) {
       singlePlayer = vsBot;
       menu.style.display = "none";
-      boardElement.style.display = "grid";
+      gameArea.style.display = "block";
       statusText.textContent = "Player Red's turn";
+      statusText.classList.remove("win");
+      gameOver = false;
+      redPlayed = false;
+      bluePlayed = false;
+      currentPlayer = "red";
       createBoard();
+    }
+
+    function goToMenu() {
+      menu.style.display = "block";
+      gameArea.style.display = "none";
     }
 
     function createBoard() {
